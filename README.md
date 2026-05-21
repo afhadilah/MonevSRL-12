@@ -15,7 +15,7 @@ https://monevsrlkel12.netlify.app/
 Isi setelah repository dibuat:
 
 ```text
-
+https://github.com/afhadilah/MonevSRL-12
 ```
 
 ## Main Features
