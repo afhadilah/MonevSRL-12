@@ -7,7 +7,7 @@ MONEVSRL adalah aplikasi web untuk membantu mahasiswa memantau progress SRL 1 sa
 Isi dengan link Netlify terakhir kamu:
 
 ```text
-https://LINK-NETLIFY-KAMU.netlify.app
+https://monevsrlkel12.netlify.app/
 ```
 
 ## GitHub Repository
@@ -15,7 +15,7 @@ https://LINK-NETLIFY-KAMU.netlify.app
 Isi setelah repository dibuat:
 
 ```text
-https://github.com/USERNAME/monevsrl-dashboard
+
 ```
 
 ## Main Features
