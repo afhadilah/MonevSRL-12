@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SRL Monitoring Dashboard - Netlify + Supabase</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <section class="setup-screen" id="setupScreen">
+    <div class="setup-card">
+      <h1>Supabase belum dikonfigurasi</h1>
+      <p>
+        Buka file <b>config.js</b>, lalu isi <b>SUPABASE_URL</b> dan <b>SUPABASE_ANON_KEY</b>
+        dari project Supabase kamu.
+      </p>
+      <pre>const SUPABASE_URL = "ISI_URL_SUPABASE";
+const SUPABASE_ANON_KEY = "ISI_ANON_KEY_SUPABASE";</pre>
+      <p class="muted">Setelah itu upload folder ini ke Netlify.</p>
+    </div>
+  </section>
+
+  <section class="auth-screen hidden" id="authScreen">
+    <div class="auth-left">
+      <div class="binus">MONEV<span>SRL</span></div>
+      <h1>SRL Monitoring Dashboard</h1>
+      <p>
+        Website SRL berbasis Netlify + Supabase. Sudah mendukung register,
+        login, database, upload evidence, mentor review, dan feedback.
+      </p>
+
+      <div class="auth-glass">
+        <div class="window-dots"><i></i><i></i><i></i></div>
+        <div class="fake-chart"></div>
+        <div class="fake-lines"><i></i><i></i><i></i></div>
+      </div>
+    </div>
+
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="active" id="loginTab">Login</button>
+        <button id="registerTab">Register</button>
+      </div>
+
+      <form id="loginForm" class="auth-form active">
+        <h2>Welcome Back</h2>
+        <p>Masuk menggunakan akun yang sudah terdaftar.</p>
+
+        <label>
+          Email
+          <input type="email" id="loginEmail" placeholder="Masukkan email akun" autocomplete="email" required />
+        </label>
+
+        <label>
+          Password
+          <input type="password" id="loginPassword" placeholder="Masukkan password" autocomplete="current-password" required />
+        </label>
+
+        <button class="primary-btn full">Login</button>
+
+        <div class="hint">
+          Gunakan akun yang sudah terdaftar. Akun mentor khusus disediakan terpisah untuk dosen/penguji.
+        </div>
+      </form>
+
+      <form id="registerForm" class="auth-form">
+        <h2>Create Account</h2>
+        <p>Email bebas, asalkan berakhiran <b>@binus.ac.id</b>.</p>
+
+        <label>
+          Nama
+          <input type="text" id="registerName" placeholder="Contoh: Kelompok 12" required />
+        </label>
+
+        <label>
+          Email Mahasiswa
+          <input type="email" id="registerEmail" placeholder="nama@binus.ac.id" required />
+        </label>
+
+        <label>
+          Password
+          <input type="password" id="registerPassword" placeholder="Minimal 6 karakter" required />
+        </label>
+
+        <input type="hidden" id="registerRole" value="student" />
+
+        <button class="primary-btn full">Register Student</button>
+
+        <div class="hint">
+          Registrasi publik hanya untuk mahasiswa. Akun mentor sudah disiapkan oleh admin untuk kebutuhan demo dan review dosen.
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <div class="app hidden" id="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">MONEV<span>SRL</span></div>
+
+      <nav>
+        <button class="nav-item active" data-page="dashboard">⌂ Dashboard</button>
+        <button class="nav-item" data-page="progress">▣ SRL Progress</button>
+        <button class="nav-item student-only" data-page="upload">⇧ Upload Evidence</button>
+        <button class="nav-item" data-page="review">☰ Review & Feedback</button>
+        <button class="nav-item mentor-only" data-page="mentor">◎ Mentor Panel</button>
+        <button class="nav-item" data-page="calendar">□ Calendar</button>
+        <button class="nav-item" data-page="settings">⚙ Settings</button>
+      </nav>
+
+      <div class="mini-card">
+        <b id="miniTitle">SRL Status</b>
+        <p id="miniDesc">Data tersimpan di Supabase.</p>
+      </div>
+
+      <button class="logout" id="logoutBtn">↪ Logout</button>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="hamburger" id="hamburger">☰</button>
+        <div>
+          <strong id="topName">User</strong>
+          <small id="topEmail">email@binus.ac.id</small>
+        </div>
+        <div class="pill" id="rolePill">student</div>
+      </header>
+
+      <section class="content">
+        <section class="page active" id="page-dashboard">
+          <div class="page-head">
+            <div>
+              <h1>SRL Dashboard</h1>
+              <p>Ringkasan progress SRL 1 sampai SRL 9.</p>
+            </div>
+            <button class="primary-btn student-only" data-go="upload">Upload Evidence</button>
+          </div>
+
+          <div id="mentorDashboardHint" class="mentor-home hidden">
+            <div class="mentor-home-head">
+              <div>
+                <h2>Mentor Overview</h2>
+                <p>Ringkasan monitoring mahasiswa, progress SRL, deadline, dan review yang perlu ditindaklanjuti.</p>
+              </div>
+              <button class="primary-btn" data-go="mentor">Open Review Workspace</button>
+            </div>
+
+            <div class="mentor-home-stats" id="mentorHomeStats"></div>
+
+            <div class="mentor-home-grid">
+              <article class="card">
+                <div class="card-head">
+                  <div>
+                    <h2>Progress Report</h2>
+                    <p class="subtle">Perbandingan progress mahasiswa berdasarkan SRL approved.</p>
+                  </div>
+                </div>
+                <div id="mentorHomeChart"></div>
+              </article>
+
+              <article class="card">
+                <div class="card-head">
+                  <div>
+                    <h2>Action Required</h2>
+                    <p class="subtle">Submission dan revisi yang perlu diprioritaskan.</p>
+                  </div>
+                </div>
+                <div id="mentorHomeActions"></div>
+              </article>
+
+              <article class="card">
+                <div class="card-head">
+                  <div>
+                    <h2>Deadline Watch</h2>
+                    <p class="subtle">Tanggal penting SRL yang sedang berjalan.</p>
+                  </div>
+                  <button class="link-btn" data-go="calendar">View Calendar</button>
+                </div>
+                <div id="mentorHomeDeadlines"></div>
+              </article>
+            </div>
+          </div>
+
+          <div class="dashboard-hero student-only">
+            <article class="card hero-card">
+              <div>
+                <span class="eyebrow">Student Command Center</span>
+                <h2 id="studentGreeting">Welcome back</h2>
+                <p id="studentSummaryText">Pantau progress, deadline, evidence, dan feedback mentor dari satu dashboard.</p>
+              </div>
+              <div class="hero-actions">
+                <button class="primary-btn" data-go="upload">Upload Evidence</button>
+                <button class="secondary-btn" id="copyStudentReportBtn" type="button">Copy Report</button>
+              </div>
+            </article>
+          </div>
+
+          <div class="student-insight-grid student-only">
+            <article class="card">
+              <div class="card-head">
+                <h2>Next Best Actions</h2>
+                <button class="link-btn" data-go="review">Open Feedback</button>
+              </div>
+              <div id="studentNextActions"></div>
+            </article>
+
+            <article class="card">
+              <div class="card-head">
+                <h2>Evidence Checklist</h2>
+                <button class="link-btn" data-go="upload">Submit</button>
+              </div>
+              <div id="studentChecklist"></div>
+            </article>
+
+            <article class="card">
+              <div class="card-head">
+                <h2>Deadline Snapshot</h2>
+                <button class="link-btn" data-go="calendar">Calendar</button>
+              </div>
+              <div id="studentDeadlineSnapshot"></div>
+            </article>
+          </div>
+
+          <div class="dashboard-grid student-only">
+            <article class="card progress-card">
+              <h2>Overall Progress</h2>
+              <div class="donut" id="donut"><div><b id="donutText">0/9</b><span>Approved</span></div></div>
+              <div class="legend">
+                <p><i class="green"></i>Approved <b id="approvedCount">0</b></p>
+                <p><i class="blue"></i>In Progress <b id="progressCount">0</b></p>
+                <p><i class="orange"></i>In Review <b id="reviewCount">0</b></p>
+                <p><i class="red"></i>Revision <b id="revisionCount">0</b></p>
+                <p><i class="gray"></i>Not Started <b id="notStartedCount">0</b></p>
+              </div>
+            </article>
+
+            <article class="card stages-card">
+              <div class="card-head">
+                <h2>SRL Stage</h2>
+                <button class="link-btn" data-go="progress">View All</button>
+              </div>
+              <div class="stage-list" id="stageList"></div>
+              <div class="bar-track"><div id="barFill"></div></div>
+              <p id="motivation">Loading...</p>
+            </article>
+
+            <article class="card activity-card">
+              <h2>Activity Timeline</h2>
+              <div id="activityList"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="page" id="page-progress">
+          <div class="page-head">
+            <div>
+              <h1>SRL Progress</h1>
+              <p>Detail status setiap SRL dan feedback mentor.</p>
+            </div>
+          </div>
+          <div class="srl-grid" id="progressGrid"></div>
+        </section>
+
+        <section class="page" id="page-upload">
+          <div class="page-head">
+            <div>
+              <h1>Upload Evidence</h1>
+              <p>File tersimpan di Supabase Storage, data submission masuk ke Supabase Database.</p>
+            </div>
+          </div>
+
+          <div class="two-col">
+            <form class="card form" id="uploadForm">
+              <h2>Submit Evidence</h2>
+              <div class="form-note" id="uploadSmartNote">Pilih SRL, upload file evidence, lalu mentor akan melihatnya di Submission Queue.</div>
+              <label>SRL Stage
+                <select id="uploadStage"></select>
+              </label>
+              <label>Evidence Title
+                <input type="text" id="uploadTitle" required placeholder="Contoh: SRL7_Final_Report" />
+              </label>
+              <label>File Evidence
+                <input type="file" id="uploadFile" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" required />
+              </label>
+              <label>Notes
+                <textarea id="uploadNotes" placeholder="Catatan untuk mentor"></textarea>
+              </label>
+              <button class="primary-btn full">Submit to Mentor</button>
+            </form>
+
+            <div class="upload-side-column">
+              <article class="card">
+                <h2>Submission History</h2>
+                <div id="submissionList"></div>
+              </article>
+
+              <article class="card">
+                <h2>Evidence Quality Guide</h2>
+                <div id="evidenceGuide"></div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="page" id="page-review">
+          <div class="page-head">
+            <div>
+              <h1>Review & Feedback</h1>
+              <p>Status approval dan feedback dari mentor.</p>
+            </div>
+          </div>
+          <div class="review-summary-grid">
+            <article class="card">
+              <h2>Review Summary</h2>
+              <div id="reviewSummary"></div>
+            </article>
+            <article class="card">
+              <h2>Status Guide</h2>
+              <div class="status-guide">
+                <p><span class="status Approved">Approved</span> Evidence sudah diterima mentor.</p>
+                <p><span class="status InReview">In Review</span> Evidence sedang menunggu review.</p>
+                <p><span class="status RevisionNeeded">Revision Needed</span> Evidence perlu diperbaiki.</p>
+              </div>
+            </article>
+          </div>
+          <div class="card">
+            <div id="reviewList"></div>
+          </div>
+        </section>
+
+        <section class="page" id="page-mentor">
+          <div class="page-head">
+            <div>
+              <h1>Review Workspace</h1>
+              <p>Panel mentor dibuat lebih ringkas: pilih mahasiswa, lihat progress, lalu review evidence dari satu tempat.</p>
+            </div>
+            <button class="primary-btn" id="mentorRefreshBtn" type="button">Refresh Data</button>
+          </div>
+
+          <div class="mentor-compact-stats" id="mentorStats"></div>
+
+          <div class="mentor-report-grid">
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <h2>Mentor Insights</h2>
+                  <p class="subtle">Ringkasan prioritas review dan kesehatan progress kelas.</p>
+                </div>
+              </div>
+              <div id="mentorInsights"></div>
+            </article>
+
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <h2>Report Tools</h2>
+                  <p class="subtle">Gunakan untuk dokumentasi presentasi atau laporan mentor.</p>
+                </div>
+              </div>
+              <div class="tool-buttons">
+                <button class="secondary-btn" id="copyMentorReportBtn" type="button">Copy Class Report</button>
+                <button class="secondary-btn" id="downloadMentorCsvBtn" type="button">Download CSV</button>
+              </div>
+              <div class="form-note">CSV berisi nama, email, approved, in review, revision, submissions, dan progress.</div>
+            </article>
+          </div>
+
+          <div class="mentor-workspace card">
+            <div class="mentor-toolbar compact">
+              <label>
+                Filter
+                <select id="mentorStatusFilter">
+                  <option value="all">All Students</option>
+                  <option value="needsReview">Needs Review</option>
+                  <option value="revision">Revision Needed</option>
+                  <option value="noSubmission">No Submission Yet</option>
+                  <option value="approved">Has Approved Stage</option>
+                </select>
+              </label>
+
+              <label>
+                Sort
+                <select id="mentorSortSelect">
+                  <option value="active">Most Active</option>
+                  <option value="pending">Most Pending Review</option>
+                  <option value="progressDesc">Highest Progress</option>
+                  <option value="progressAsc">Lowest Progress</option>
+                  <option value="name">Name A-Z</option>
+                </select>
+              </label>
+
+              <label class="search-box">
+                <span>Search</span>
+                <input type="text" id="mentorStudentSearch" placeholder="Cari nama atau email..." />
+              </label>
+            </div>
+
+            <div id="mentorEmptyNotice"></div>
+
+            <div class="mentor-compact-grid">
+              <aside class="mentor-student-pane">
+                <h2>Students</h2>
+                <div id="mentorStudentList"></div>
+              </aside>
+
+              <main class="mentor-review-pane">
+                <div id="mentorStudentDetail"></div>
+
+                <div class="review-tabs">
+                  <button class="review-tab active" type="button" data-review-tab="queue">Submission Queue</button>
+                  <button class="review-tab" type="button" data-review-tab="history">Approval History</button>
+                  <button class="review-tab" type="button" data-review-tab="silent">No Submission</button>
+                </div>
+
+                <section class="review-tab-panel active" id="reviewTabQueue">
+                  <div class="queue-top">
+                    <p class="subtle">Gunakan quick action untuk approve/revision cepat, atau tulis feedback manual.</p>
+                    <button class="link-btn" id="mentorShowAllBtn" type="button">Show All</button>
+                  </div>
+                  <div id="mentorSubmissionList"></div>
+                </section>
+
+                <section class="review-tab-panel" id="reviewTabHistory">
+                  <div id="mentorApprovalHistory"></div>
+                </section>
+
+                <section class="review-tab-panel" id="reviewTabSilent">
+                  <div id="mentorNoSubmitCard"></div>
+                </section>
+              </main>
+
+              <aside class="mentor-form-pane">
+                <form class="form" id="mentorReviewForm">
+                  <h2>Give Feedback</h2>
+                  <label>Submission
+                    <select id="mentorSubmissionSelect"></select>
+                  </label>
+                  <label>Status
+                    <select id="mentorStatus">
+                      <option value="Approved">Approved</option>
+                      <option value="Revision Needed">Revision Needed</option>
+                      <option value="In Review">In Review</option>
+                    </select>
+                  </label>
+                  <label>Feedback
+                    <textarea id="mentorFeedback" placeholder="Tulis feedback mentor..." required></textarea>
+                  </label>
+                  <button class="primary-btn full">Save Review</button>
+                </form>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+        <section class="page" id="page-calendar">
+          <div class="page-head">
+            <div>
+              <h1>Calendar & Deadlines</h1>
+              <p>Jadwal deadline SRL, review mentor, dan reminder pengerjaan.</p>
+            </div>
+          </div>
+          <div class="calendar-grid improved">
+            <article class="card">
+              <div class="card-head">
+                <h2>June 2026</h2>
+                <span class="student-chip">SRL 7 Focus</span>
+              </div>
+              <div class="calendar" id="calendar"></div>
+            </article>
+            <article class="card">
+              <h2>Upcoming Deadlines</h2>
+              <div id="deadlineList"></div>
+            </article>
+          </div>
+          <div class="deadline-board card">
+            <div class="card-head">
+              <div>
+                <h2>Deadline Details & Preparation</h2>
+                <p class="subtle">Gunakan bagian ini untuk mempersiapkan evidence sebelum tanggal deadline.</p>
+              </div>
+            </div>
+            <div id="deadlineDetailBoard"></div>
+          </div>
+        </section>
+
+        <section class="page" id="page-settings">
+          <div class="page-head">
+            <div>
+              <h1>Settings</h1>
+              <p>Informasi akun yang sedang login.</p>
+            </div>
+          </div>
+          <div class="card">
+            <p><b>Name:</b> <span id="settingsName"></span></p>
+            <p><b>Email:</b> <span id="settingsEmail"></span></p>
+            <p><b>Role:</b> <span id="settingsRole"></span></p>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
